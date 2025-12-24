@@ -23,6 +23,60 @@ Custom n8n nodes to work with Apache CouchDB (databases and documents) with sele
 - Purge After Delete: when true, deletes also purge the same docs.
 - Body: JSON object payload for create/update.
 
+## Quickstart
+1) Install deps: `npm install`
+2) Build: `npm run build` (copies logo.svg into dist)
+3) Mount in n8n (e.g., `N8N_CUSTOM_EXTENSIONS` + volume mount to `/home/node/.n8n/custom`).
+4) Restart n8n/worker and find the node under Custom.
+
+### Install via npm (when published)
+- `npm install n8n-nodes-couchdb`
+- Ensure `N8N_CUSTOM_EXTENSIONS` points to the installed path or mount the package into `/home/node/.n8n/custom` in Docker.
+
+## Examples
+- Simple Filters (equals, dot notation): set Field `metadata.category`, Value `news`; leave Mango selector empty → runs as `{ "metadata.category": { "$eq": "news" } }`.
+- Mango selector: set Filter to `{ "type": "workflow", "active": true }`.
+- List documents with pagination: Operation `List Documents`, Page Size `25`, Page `2`, Include Docs `true`.
+- Replace update: Operation `Update`, Replace Document `true`, Body `{ "name": "New Name" }` → document keeps only `_id`, `_rev`, `name`.
+- Delete with purge: Operation `Delete`, Purge After Delete `true`, Filter `{ "type": "old" }` → bulk delete + purge matching docs.
+
+### Workflow snippet (list paginated)
+```json
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "listDocs",
+				"db": "n8n_workflows",
+				"pageSize": 25,
+				"page": 2,
+				"includeDocs": true
+			},
+			"name": "CouchDB List",
+			"type": "n8n-nodes-couchdb.couchDb",
+			"typeVersion": 1,
+			"credentials": {
+				"couchDbApi": {
+					"id": "YOUR-CREDENTIAL-ID"
+				}
+			}
+		}
+	]
+}
+```
+
+## Usage Notes
+- Leave Filter empty/`{}` to use Document ID; use Simple Filters for quick equals, or a full Mango selector for complex queries.
+- For bulk update via selector, the node uses `_find` then `_bulk_docs` (with optional replace mode).
+- For bulk delete via selector, the node marks `_deleted` via `_bulk_docs` then optionally purges the same revisions.
+- Purge operation expects `{ docId: [rev] }`; the node builds this automatically in delete.
+- If CouchDB returns invalid docs (e.g., strings), the node raises a clear error instead of producing character-keyed objects.
+
+## Credentials
+- Type: `couchDbApi`
+- Fields: Base URL (default `http://localhost:5984`), Username, Password
+
 ## Install & Build
 1. From this package folder: `npm install`
 2. Build: `npm run build`

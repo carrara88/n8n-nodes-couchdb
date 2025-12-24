@@ -1,4 +1,4 @@
-import { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { IExecuteFunctions, ILoadOptionsFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { databaseOperations } from './database.operations';
 import { documentOperations } from './document.operations';
 
@@ -34,6 +34,9 @@ export class CouchDb implements INodeType {
           { name: 'Get', value: 'get' },
           { name: 'Find', value: 'find' },
           { name: 'List Documents', value: 'listDocs' },
+          { name: 'Get Attachment', value: 'getAttachment' },
+          { name: 'Put Attachment', value: 'putAttachment' },
+          { name: 'Delete Attachment', value: 'deleteAttachment' },
           { name: 'Update', value: 'update' },
           { name: 'Delete', value: 'delete' },
           { name: 'Purge', value: 'purge' }
@@ -42,13 +45,16 @@ export class CouchDb implements INodeType {
       {
         displayName: 'Database',
         name: 'db',
-        type: 'string',
+        type: 'options',
+        typeOptions: {
+          loadOptionsMethod: 'getDatabases'
+        },
         default: '',
         required: true,
         displayOptions: {
           show: {
             resource: ['document', 'database'],
-            operation: ['create', 'delete', 'get', 'update', 'purge']
+            operation: ['create', 'delete', 'get', 'update', 'purge', 'find', 'listDocs', 'getAttachment', 'putAttachment', 'deleteAttachment']
           }
         }
       },
@@ -57,14 +63,55 @@ export class CouchDb implements INodeType {
         name: 'docId',
         type: 'string',
         default: '',
-        displayOptions: { show: { resource: ['document'], operation: ['get', 'update', 'delete', 'purge'] } }
+        displayOptions: { show: { resource: ['document'], operation: ['get', 'update', 'delete', 'purge', 'getAttachment', 'putAttachment', 'deleteAttachment'] } }
+      },
+      {
+        displayName: 'Attachment Name',
+        name: 'attachmentName',
+        type: 'string',
+        default: '',
+        description: 'Attachment file name',
+        displayOptions: { show: { resource: ['document'], operation: ['getAttachment', 'putAttachment', 'deleteAttachment'] } }
+      },
+      {
+        displayName: 'Attachment Data (base64)',
+        name: 'attachmentData',
+        type: 'string',
+        default: '',
+        description: 'Base64-encoded content to upload',
+        displayOptions: { show: { resource: ['document'], operation: ['putAttachment'] } }
+      },
+      {
+        displayName: 'Attachment Content Type',
+        name: 'attachmentContentType',
+        type: 'string',
+        default: 'application/octet-stream',
+        description: 'MIME type for the attachment',
+        displayOptions: { show: { resource: ['document'], operation: ['putAttachment'] } }
+      },
+      {
+        displayName: 'Return Full Document',
+        name: 'returnFullDocument',
+        type: 'boolean',
+        default: true,
+        description: 'If false, return only _id and _rev for get',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
       },
       {
         displayName: 'Revision',
         name: 'rev',
         type: 'string',
         default: '',
-        displayOptions: { show: { resource: ['document'], operation: ['update', 'delete', 'purge'] } }
+        displayOptions: { show: { resource: ['document'], operation: ['purge'] } },
+        description: 'Required only for purge; update/delete fetch revision automatically'
+      },
+      {
+        displayName: 'Revision (for Get)',
+        name: 'getRev',
+        type: 'string',
+        default: '',
+        description: 'If set, fetches a specific document revision',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
       },
       {
         displayName: 'Filter (Mango selector)',
@@ -78,9 +125,49 @@ export class CouchDb implements INodeType {
         displayName: 'Simple Filters',
         name: 'simpleFilters',
         type: 'fixedCollection',
-        multipleValues: true,
+        typeOptions: { multipleValues: true },
         default: {},
         placeholder: 'Add filter',
+      {
+        displayName: 'Include Attachments',
+        name: 'attachments',
+        type: 'boolean',
+        default: false,
+        description: 'Include attachment data (base64) when fetching a document',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+      },
+      {
+        displayName: 'Attachment Encoding Info',
+        name: 'attEncodingInfo',
+        type: 'boolean',
+        default: false,
+        description: 'Include compressed size/codec info for attachments',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+      },
+      {
+        displayName: 'Attachments Since (revs array)',
+        name: 'attsSince',
+        type: 'json',
+        default: '[]',
+        description: 'Array of revision strings; attachments newer than these will be included',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+      },
+      {
+        displayName: 'Include Revisions Tree',
+        name: 'revs',
+        type: 'boolean',
+        default: false,
+        description: 'If true, include _revisions in the document',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+      },
+      {
+        displayName: 'Include Revisions Info',
+        name: 'revsInfo',
+        type: 'boolean',
+        default: false,
+        description: 'If true, include _revs_info in the document',
+        displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+      },
         description: 'Quick equals filters (dot notation) merged into the selector',
         options: [
           {
@@ -134,7 +221,7 @@ export class CouchDb implements INodeType {
         type: 'boolean',
         default: true,
         description: 'Include full documents when listing (otherwise only ids)',
-        displayOptions: { show: { resource: ['document'], operation: ['listDocs'] } }
+        displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'] } }
       },
       {
         displayName: 'Body',
@@ -152,4 +239,20 @@ export class CouchDb implements INodeType {
     if (resource === 'document') return [await documentOperations.call(this)];
     throw new Error('Unknown resource');
   }
+
+  methods = {
+    loadOptions: {
+      async getDatabases(this: ILoadOptionsFunctions) {
+        const credentials = await this.getCredentials('couchDbApi');
+        const { baseUrl, username, password } = credentials as { baseUrl: string; username: string; password: string };
+        const res = await this.helpers.httpRequest({
+          method: 'GET',
+          url: `${baseUrl}/_all_dbs`,
+          auth: { username, password },
+          json: true
+        });
+        return (res as string[]).map((name) => ({ name, value: name }));
+      }
+    }
+  };
 }

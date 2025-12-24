@@ -8,33 +8,40 @@
     "n8n"
   ],
   "license": "MIT",
+  "author": "CouchDB n8n Custom Node",
+  "repository": {
+    "type": "git",
+    "url": "https://example.com/your-repo.git"
+  },
+  "homepage": "https://example.com/your-repo",
+  "bugs": {
+    "url": "https://example.com/your-repo/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "node scripts/copy-assets.js",
     "prepare": "npm run build",
-    "pack": "npm run build && npm pack"
+    "pack": "npm run build && npm pack",
+    "lint": "echo \"add eslint and run lint\"",
+    "test": "npm run build"
   },
   "dependencies": {
-    "@langchain/core": "^1.1.8",
-    "@n8n/config": "^2.1.0",
-    "@sentry/node": "^10.32.1",
-    "axios": "^1.13.2",
-    "express": "^5.2.1",
-    "luxon": "^3.7.2",
-    "n8n-workflow": "^1.0.0",
-    "nock": "^14.0.10",
-    "ssh2": "^1.17.0"
+    "n8n-workflow": "^1.0.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": ">=1.0.0",
+    "n8n-core": ">=1.0.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/luxon": "^3.7.1",
-    "@types/nock": "^10.0.3",
     "@types/node": "^25.0.3",
-    "@types/ssh2": "^1.15.5",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

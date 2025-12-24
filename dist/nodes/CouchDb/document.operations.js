@@ -31,9 +31,21 @@ async function documentOperations() {
         return [{ json: await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`) }];
     }
     if (operation === 'find') {
-        if (!hasFilter)
-            throw new Error('Filter selector is required for find');
         const skip = Math.max(0, (page - 1) * pageSize);
+        if (!hasFilter) {
+            // Fallback to _all_docs when no selector/filters are provided
+            const res = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${includeDocs}&limit=${pageSize}&skip=${skip}`);
+            if (includeDocs) {
+                const rows = (res?.rows ?? []).map((row) => ({
+                    id: row.id,
+                    key: row.key,
+                    value: row.value,
+                    doc: row.doc ? normalizeDocumentObject(row.doc) : undefined,
+                }));
+                return this.helpers.returnJsonArray(rows);
+            }
+            return this.helpers.returnJsonArray((res?.rows ?? []).map((row) => ({ id: row.id, key: row.key, value: row.value })));
+        }
         const res = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector, limit: pageSize, skip });
         const docs = (res?.docs ?? []).map(normalizeDocumentObject);
         return this.helpers.returnJsonArray(docs);

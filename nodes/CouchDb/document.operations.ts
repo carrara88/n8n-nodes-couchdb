@@ -13,9 +13,21 @@ export async function documentOperations(this: any) {
   const pageSize = this.getNodeParameter('pageSize', 0, 50) as number;
   const page = this.getNodeParameter('page', 0, 1) as number;
   const includeDocs = this.getNodeParameter('includeDocs', 0, true) as boolean;
+  const returnFullDocument = this.getNodeParameter('returnFullDocument', 0, true) as boolean;
+  const attachments = this.getNodeParameter('attachments', 0, false) as boolean;
+  const attEncodingInfo = this.getNodeParameter('attEncodingInfo', 0, false) as boolean;
+  const attsSinceRaw = this.getNodeParameter('attsSince', 0, '[]') as unknown;
+  const revs = this.getNodeParameter('revs', 0, false) as boolean;
+  const revsInfo = this.getNodeParameter('revsInfo', 0, false) as boolean;
+  const getRev = this.getNodeParameter('getRev', 0, '') as string;
+  const attachmentName = this.getNodeParameter('attachmentName', 0, '') as string;
+  const attachmentData = this.getNodeParameter('attachmentData', 0, '') as string;
+  const attachmentContentType = this.getNodeParameter('attachmentContentType', 0, 'application/octet-stream') as string;
+  const returnFullDocument = this.getNodeParameter('returnFullDocument', 0, true) as boolean;
 
   const body = normalizeObject(rawBody, 'Body must be an object or valid JSON object string');
   const selector = mergeSelectors(normalizeSelector(rawFilter), buildSimpleSelector(simpleFilters));
+  const attsSince = normalizeArray(attsSinceRaw);
 
   const hasFilter = selector && Object.keys(selector).length > 0;
 
@@ -25,18 +37,93 @@ export async function documentOperations(this: any) {
     if (hasFilter) {
       const res = await couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
       const docs = ((res as any)?.docs ?? []).map(normalizeDocumentObject);
-      return this.helpers.returnJsonArray(docs);
+      if (returnFullDocument) return this.helpers.returnJsonArray(docs);
+      return this.helpers.returnJsonArray(docs.map((d: any) => ({ _id: d._id, _rev: d._rev })));
     }
     if (!docId) throw new Error('Document ID is required when no filter is provided');
-    return [{ json: await couchDbRequest.call(this, 'GET', `/${db}/${docId}`) }];
+    const query = buildQuery({ attachments, att_encoding_info: attEncodingInfo, atts_since: attsSince, rev: getRev || undefined, revs, revs_info: revsInfo });
+    const doc = await couchDbRequest.call(this, 'GET', `/${db}/${docId}${query}`);
+    if (returnFullDocument) return [{ json: doc }];
+    return [{ json: { _id: (doc as any)?._id ?? docId, _rev: (doc as any)?._rev } }];
   }
 
   if (operation === 'find') {
-    if (!hasFilter) throw new Error('Filter selector is required for find');
     const skip = Math.max(0, (page - 1) * pageSize);
+    if (!hasFilter) {
+      // Fallback to _all_docs when no selector/filters are provided
+      const res = await couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${includeDocs}&limit=${pageSize}&skip=${skip}`);
+      if (includeDocs) {
+        const rows = ((res as any)?.rows ?? []).map((row: any) => ({
+          id: row.id,
+          key: row.key,
+          value: row.value,
+          doc: row.doc ? normalizeDocumentObject(row.doc) : undefined,
+        }));
+        return this.helpers.returnJsonArray(rows as any[]);
+      }
+      return this.helpers.returnJsonArray(((res as any)?.rows ?? []).map((row: any) => ({ id: row.id, key: row.key, value: row.value })) as any[]);
+    }
     const res = await couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector, limit: pageSize, skip });
     const docs = ((res as any)?.docs ?? []).map(normalizeDocumentObject);
-    return this.helpers.returnJsonArray(docs);
+    if (includeDocs) return this.helpers.returnJsonArray(docs);
+    return this.helpers.returnJsonArray(docs.map((d: any) => ({ _id: d._id, _rev: d._rev })));
+  }
+
+  if (operation === 'getAttachment') {
+    if (!docId) throw new Error('Document ID is required for attachment operations');
+    if (!attachmentName) throw new Error('Attachment name is required');
+    const credentials = await this.getCredentials('couchDbApi');
+    const { baseUrl, username, password } = credentials as { baseUrl: string; username: string; password: string };
+    const response = await this.helpers.httpRequest({
+      method: 'GET',
+      url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
+      qs: getRev ? { rev: getRev } : undefined,
+      auth: { username, password },
+      encoding: 'arraybuffer',
+      json: false,
+      resolveWithFullResponse: true
+    });
+    const resObj = response as any;
+    const data = Buffer.from(resObj?.body ?? []).toString('base64');
+    const contentType = resObj?.headers?.['content-type'];
+    return [{ json: { _id: docId, attachment: attachmentName, contentType, data } }];
+  }
+
+  if (operation === 'putAttachment') {
+    if (!docId) throw new Error('Document ID is required for attachment operations');
+    if (!attachmentName) throw new Error('Attachment name is required');
+    if (!attachmentData) throw new Error('Attachment data (base64) is required');
+    const credentials = await this.getCredentials('couchDbApi');
+    const { baseUrl, username, password } = credentials as { baseUrl: string; username: string; password: string };
+    const currentRev = rev || (await fetchRevision.call(this, db, docId));
+    const buffer = Buffer.from(attachmentData, 'base64');
+    const res = await this.helpers.httpRequest({
+      method: 'PUT',
+      url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
+      qs: currentRev ? { rev: currentRev } : undefined,
+      auth: { username, password },
+      body: buffer,
+      encoding: null,
+      json: false,
+      headers: { 'Content-Type': attachmentContentType }
+    });
+    return [{ json: res as any }];
+  }
+
+  if (operation === 'deleteAttachment') {
+    if (!docId) throw new Error('Document ID is required for attachment operations');
+    if (!attachmentName) throw new Error('Attachment name is required');
+    const credentials = await this.getCredentials('couchDbApi');
+    const { baseUrl, username, password } = credentials as { baseUrl: string; username: string; password: string };
+    const currentRev = rev || (await fetchRevision.call(this, db, docId));
+    const res = await this.helpers.httpRequest({
+      method: 'DELETE',
+      url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
+      qs: currentRev ? { rev: currentRev } : undefined,
+      auth: { username, password },
+      json: true
+    });
+    return [{ json: res as any }];
   }
 
   if (operation === 'update') {
@@ -189,4 +276,39 @@ function parseSimpleValue(value: string): unknown {
   } catch {
     return value;
   }
+}
+
+function normalizeArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v) => typeof v === 'string') as string[];
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter((v) => typeof v === 'string') as string[];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function buildQuery(query: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [key, val] of Object.entries(query)) {
+    if (val === undefined || val === null || val === false) continue;
+    if (Array.isArray(val)) {
+      if (val.length === 0) continue;
+      params.set(key, JSON.stringify(val));
+      continue;
+    }
+    params.set(key, String(val));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+async function fetchRevision(this: any, db: string, docId: string): Promise<string> {
+  const doc = await couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
+  return (doc as any)?._rev || '';
 }

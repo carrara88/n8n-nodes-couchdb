@@ -43,13 +43,16 @@ class CouchDb {
             {
                 displayName: 'Database',
                 name: 'db',
-                type: 'string',
+                type: 'options',
+                typeOptions: {
+                    loadOptionsMethod: 'getDatabases'
+                },
                 default: '',
                 required: true,
                 displayOptions: {
                     show: {
                         resource: ['document', 'database'],
-                        operation: ['create', 'delete', 'get', 'update', 'purge']
+                        operation: ['create', 'delete', 'get', 'update', 'purge', 'find', 'listDocs']
                     }
                 }
             },
@@ -65,7 +68,8 @@ class CouchDb {
                 name: 'rev',
                 type: 'string',
                 default: '',
-                displayOptions: { show: { resource: ['document'], operation: ['update', 'delete', 'purge'] } }
+                displayOptions: { show: { resource: ['document'], operation: ['purge'] } },
+                description: 'Required only for purge; update/delete fetch revision automatically'
             },
             {
                 displayName: 'Filter (Mango selector)',
@@ -79,7 +83,7 @@ class CouchDb {
                 displayName: 'Simple Filters',
                 name: 'simpleFilters',
                 type: 'fixedCollection',
-                multipleValues: true,
+                typeOptions: { multipleValues: true },
                 default: {},
                 placeholder: 'Add filter',
                 description: 'Quick equals filters (dot notation) merged into the selector',
@@ -154,5 +158,20 @@ class CouchDb {
             return [await document_operations_1.documentOperations.call(this)];
         throw new Error('Unknown resource');
     }
+    methods = {
+        loadOptions: {
+            async getDatabases() {
+                const credentials = await this.getCredentials('couchDbApi');
+                const { baseUrl, username, password } = credentials;
+                const res = await this.helpers.httpRequest({
+                    method: 'GET',
+                    url: `${baseUrl}/_all_dbs`,
+                    auth: { username, password },
+                    json: true
+                });
+                return res.map((name) => ({ name, value: name }));
+            }
+        }
+    };
 }
 exports.CouchDb = CouchDb;
