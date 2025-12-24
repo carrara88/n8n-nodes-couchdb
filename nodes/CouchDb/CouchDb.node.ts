@@ -15,19 +15,32 @@ export class CouchDb implements INodeType {
     outputs: ['main'],
     credentials: [{ name: 'couchDbApi', required: true }],
     properties: [
-      { displayName: 'Resource', name: 'resource', type: 'options', options: [
-        { name: 'Database', value: 'database' },
-        { name: 'Document', value: 'document' }
-      ], default: 'database' },
-      { displayName: 'Operation', name: 'operation', type: 'options',
+      {
+        displayName: 'Resource',
+        name: 'resource',
+        type: 'options',
+        options: [
+          { name: 'Database', value: 'database' },
+          { name: 'Document', value: 'document' }
+        ],
+        default: 'database'
+      },
+      {
+        displayName: 'Operation',
+        name: 'operation',
+        type: 'options',
         displayOptions: { show: { resource: ['database'] } },
         options: [
           { name: 'List Databases', value: 'list' },
           { name: 'Create Database', value: 'create' },
           { name: 'Delete Database', value: 'delete' }
-        ], default: 'list'
+        ],
+        default: 'list'
       },
-      { displayName: 'Operation', name: 'operation', type: 'options',
+      {
+        displayName: 'Operation',
+        name: 'operation',
+        type: 'options',
         displayOptions: { show: { resource: ['document'] } },
         options: [
           { name: 'Create', value: 'create' },
@@ -40,7 +53,8 @@ export class CouchDb implements INodeType {
           { name: 'Update', value: 'update' },
           { name: 'Delete', value: 'delete' },
           { name: 'Purge', value: 'purge' }
-        ], default: 'get'
+        ],
+        default: 'get'
       },
       {
         displayName: 'Database',
@@ -128,6 +142,19 @@ export class CouchDb implements INodeType {
         typeOptions: { multipleValues: true },
         default: {},
         placeholder: 'Add filter',
+        description: 'Quick equals filters (dot notation) merged into the selector',
+        options: [
+          {
+            name: 'rule',
+            displayName: 'Rule',
+            values: [
+              { displayName: 'Field (dot notation)', name: 'field', type: 'string', default: '' },
+              { displayName: 'Value', name: 'value', type: 'string', default: '' }
+            ]
+          }
+        ],
+        displayOptions: { show: { resource: ['document'], operation: ['get', 'find', 'update', 'delete'] } }
+      },
       {
         displayName: 'Include Attachments',
         name: 'attachments',
@@ -167,19 +194,6 @@ export class CouchDb implements INodeType {
         default: false,
         description: 'If true, include _revs_info in the document',
         displayOptions: { show: { resource: ['document'], operation: ['get'] } }
-      },
-        description: 'Quick equals filters (dot notation) merged into the selector',
-        options: [
-          {
-            name: 'rule',
-            displayName: 'Rule',
-            values: [
-              { displayName: 'Field (dot notation)', name: 'field', type: 'string', default: '' },
-              { displayName: 'Value', name: 'value', type: 'string', default: '' }
-            ]
-          }
-        ],
-        displayOptions: { show: { resource: ['document'], operation: ['get', 'find', 'update', 'delete'] } }
       },
       {
         displayName: 'Replace Document (override)',

@@ -13,7 +13,6 @@ export async function documentOperations(this: any) {
   const pageSize = this.getNodeParameter('pageSize', 0, 50) as number;
   const page = this.getNodeParameter('page', 0, 1) as number;
   const includeDocs = this.getNodeParameter('includeDocs', 0, true) as boolean;
-  const returnFullDocument = this.getNodeParameter('returnFullDocument', 0, true) as boolean;
   const attachments = this.getNodeParameter('attachments', 0, false) as boolean;
   const attEncodingInfo = this.getNodeParameter('attEncodingInfo', 0, false) as boolean;
   const attsSinceRaw = this.getNodeParameter('attsSince', 0, '[]') as unknown;
@@ -53,13 +52,10 @@ export async function documentOperations(this: any) {
       // Fallback to _all_docs when no selector/filters are provided
       const res = await couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${includeDocs}&limit=${pageSize}&skip=${skip}`);
       if (includeDocs) {
-        const rows = ((res as any)?.rows ?? []).map((row: any) => ({
-          id: row.id,
-          key: row.key,
-          value: row.value,
-          doc: row.doc ? normalizeDocumentObject(row.doc) : undefined,
-        }));
-        return this.helpers.returnJsonArray(rows as any[]);
+        const docs = ((res as any)?.rows ?? [])
+          .map((row: any) => (row.doc ? normalizeDocumentObject(row.doc) : undefined))
+          .filter((d: any) => d !== undefined);
+        return this.helpers.returnJsonArray(docs as any[]);
       }
       return this.helpers.returnJsonArray(((res as any)?.rows ?? []).map((row: any) => ({ id: row.id, key: row.key, value: row.value })) as any[]);
     }
@@ -178,15 +174,11 @@ export async function documentOperations(this: any) {
   if (operation === 'listDocs') {
     const skip = Math.max(0, (page - 1) * pageSize);
     const res = await couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${includeDocs}&limit=${pageSize}&skip=${skip}`);
-    // Keep the structure closer to CouchDB response while normalizing docs if included
     if (includeDocs) {
-      const rows = ((res as any)?.rows ?? []).map((row: any) => ({
-        id: row.id,
-        key: row.key,
-        value: row.value,
-        doc: row.doc ? normalizeDocumentObject(row.doc) : undefined,
-      }));
-      return this.helpers.returnJsonArray(rows as any[]);
+      const docs = ((res as any)?.rows ?? [])
+        .map((row: any) => (row.doc ? normalizeDocumentObject(row.doc) : undefined))
+        .filter((d: any) => d !== undefined);
+      return this.helpers.returnJsonArray(docs as any[]);
     }
     return this.helpers.returnJsonArray(((res as any)?.rows ?? []).map((row: any) => ({ id: row.id, key: row.key, value: row.value })) as any[]);
   }

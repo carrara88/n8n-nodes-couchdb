@@ -16,29 +16,46 @@ class CouchDb {
         outputs: ['main'],
         credentials: [{ name: 'couchDbApi', required: true }],
         properties: [
-            { displayName: 'Resource', name: 'resource', type: 'options', options: [
+            {
+                displayName: 'Resource',
+                name: 'resource',
+                type: 'options',
+                options: [
                     { name: 'Database', value: 'database' },
                     { name: 'Document', value: 'document' }
-                ], default: 'database' },
-            { displayName: 'Operation', name: 'operation', type: 'options',
+                ],
+                default: 'database'
+            },
+            {
+                displayName: 'Operation',
+                name: 'operation',
+                type: 'options',
                 displayOptions: { show: { resource: ['database'] } },
                 options: [
                     { name: 'List Databases', value: 'list' },
                     { name: 'Create Database', value: 'create' },
                     { name: 'Delete Database', value: 'delete' }
-                ], default: 'list'
+                ],
+                default: 'list'
             },
-            { displayName: 'Operation', name: 'operation', type: 'options',
+            {
+                displayName: 'Operation',
+                name: 'operation',
+                type: 'options',
                 displayOptions: { show: { resource: ['document'] } },
                 options: [
                     { name: 'Create', value: 'create' },
                     { name: 'Get', value: 'get' },
                     { name: 'Find', value: 'find' },
                     { name: 'List Documents', value: 'listDocs' },
+                    { name: 'Get Attachment', value: 'getAttachment' },
+                    { name: 'Put Attachment', value: 'putAttachment' },
+                    { name: 'Delete Attachment', value: 'deleteAttachment' },
                     { name: 'Update', value: 'update' },
                     { name: 'Delete', value: 'delete' },
                     { name: 'Purge', value: 'purge' }
-                ], default: 'get'
+                ],
+                default: 'get'
             },
             {
                 displayName: 'Database',
@@ -52,7 +69,7 @@ class CouchDb {
                 displayOptions: {
                     show: {
                         resource: ['document', 'database'],
-                        operation: ['create', 'delete', 'get', 'update', 'purge', 'find', 'listDocs']
+                        operation: ['create', 'delete', 'get', 'update', 'purge', 'find', 'listDocs', 'getAttachment', 'putAttachment', 'deleteAttachment']
                     }
                 }
             },
@@ -61,7 +78,39 @@ class CouchDb {
                 name: 'docId',
                 type: 'string',
                 default: '',
-                displayOptions: { show: { resource: ['document'], operation: ['get', 'update', 'delete', 'purge'] } }
+                displayOptions: { show: { resource: ['document'], operation: ['get', 'update', 'delete', 'purge', 'getAttachment', 'putAttachment', 'deleteAttachment'] } }
+            },
+            {
+                displayName: 'Attachment Name',
+                name: 'attachmentName',
+                type: 'string',
+                default: '',
+                description: 'Attachment file name',
+                displayOptions: { show: { resource: ['document'], operation: ['getAttachment', 'putAttachment', 'deleteAttachment'] } }
+            },
+            {
+                displayName: 'Attachment Data (base64)',
+                name: 'attachmentData',
+                type: 'string',
+                default: '',
+                description: 'Base64-encoded content to upload',
+                displayOptions: { show: { resource: ['document'], operation: ['putAttachment'] } }
+            },
+            {
+                displayName: 'Attachment Content Type',
+                name: 'attachmentContentType',
+                type: 'string',
+                default: 'application/octet-stream',
+                description: 'MIME type for the attachment',
+                displayOptions: { show: { resource: ['document'], operation: ['putAttachment'] } }
+            },
+            {
+                displayName: 'Return Full Document',
+                name: 'returnFullDocument',
+                type: 'boolean',
+                default: true,
+                description: 'If false, return only _id and _rev for get',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
             },
             {
                 displayName: 'Revision',
@@ -70,6 +119,14 @@ class CouchDb {
                 default: '',
                 displayOptions: { show: { resource: ['document'], operation: ['purge'] } },
                 description: 'Required only for purge; update/delete fetch revision automatically'
+            },
+            {
+                displayName: 'Revision (for Get)',
+                name: 'getRev',
+                type: 'string',
+                default: '',
+                description: 'If set, fetches a specific document revision',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
             },
             {
                 displayName: 'Filter (Mango selector)',
@@ -98,6 +155,46 @@ class CouchDb {
                     }
                 ],
                 displayOptions: { show: { resource: ['document'], operation: ['get', 'find', 'update', 'delete'] } }
+            },
+            {
+                displayName: 'Include Attachments',
+                name: 'attachments',
+                type: 'boolean',
+                default: false,
+                description: 'Include attachment data (base64) when fetching a document',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+            },
+            {
+                displayName: 'Attachment Encoding Info',
+                name: 'attEncodingInfo',
+                type: 'boolean',
+                default: false,
+                description: 'Include compressed size/codec info for attachments',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+            },
+            {
+                displayName: 'Attachments Since (revs array)',
+                name: 'attsSince',
+                type: 'json',
+                default: '[]',
+                description: 'Array of revision strings; attachments newer than these will be included',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+            },
+            {
+                displayName: 'Include Revisions Tree',
+                name: 'revs',
+                type: 'boolean',
+                default: false,
+                description: 'If true, include _revisions in the document',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+            },
+            {
+                displayName: 'Include Revisions Info',
+                name: 'revsInfo',
+                type: 'boolean',
+                default: false,
+                description: 'If true, include _revs_info in the document',
+                displayOptions: { show: { resource: ['document'], operation: ['get'] } }
             },
             {
                 displayName: 'Replace Document (override)',
@@ -139,7 +236,7 @@ class CouchDb {
                 type: 'boolean',
                 default: true,
                 description: 'Include full documents when listing (otherwise only ids)',
-                displayOptions: { show: { resource: ['document'], operation: ['listDocs'] } }
+                displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'] } }
             },
             {
                 displayName: 'Body',
