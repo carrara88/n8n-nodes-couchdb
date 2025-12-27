@@ -1,1 +1,1 @@
-export declare function documentOperations(this: any): Promise<any>;
+export declare function documentOperations(this: any): Promise<any[]>;

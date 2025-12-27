@@ -3,197 +3,297 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.documentOperations = documentOperations;
 const transport_1 = require("./transport");
 async function documentOperations() {
-    const operation = this.getNodeParameter('operation', 0);
-    const db = this.getNodeParameter('db', 0);
-    const docId = this.getNodeParameter('docId', 0, '');
-    const rawBody = this.getNodeParameter('body', 0, {});
-    const rev = this.getNodeParameter('rev', 0, '');
-    const rawFilter = this.getNodeParameter('filter', 0, {});
-    const purgeAfterDelete = this.getNodeParameter('purgeAfterDelete', 0, true);
-    const replace = this.getNodeParameter('replace', 0, false);
-    const simpleFilters = this.getNodeParameter('simpleFilters.rule', 0, []);
-    const pageSize = this.getNodeParameter('pageSize', 0, 50);
-    const page = this.getNodeParameter('page', 0, 1);
-    const includeDocs = this.getNodeParameter('includeDocs', 0, true);
-    const attachments = this.getNodeParameter('attachments', 0, false);
-    const attEncodingInfo = this.getNodeParameter('attEncodingInfo', 0, false);
-    const attsSinceRaw = this.getNodeParameter('attsSince', 0, '[]');
-    const revs = this.getNodeParameter('revs', 0, false);
-    const revsInfo = this.getNodeParameter('revsInfo', 0, false);
-    const getRev = this.getNodeParameter('getRev', 0, '');
-    const attachmentName = this.getNodeParameter('attachmentName', 0, '');
-    const attachmentData = this.getNodeParameter('attachmentData', 0, '');
-    const attachmentContentType = this.getNodeParameter('attachmentContentType', 0, 'application/octet-stream');
-    const returnFullDocument = this.getNodeParameter('returnFullDocument', 0, true);
-    const body = normalizeObject(rawBody, 'Body must be an object or valid JSON object string');
-    const selector = mergeSelectors(normalizeSelector(rawFilter), buildSimpleSelector(simpleFilters));
-    const attsSince = normalizeArray(attsSinceRaw);
-    const hasFilter = selector && Object.keys(selector).length > 0;
-    if (operation === 'create')
-        return [{ json: await transport_1.couchDbRequest.call(this, 'POST', `/${db}`, body) }];
-    if (operation === 'get') {
-        if (hasFilter) {
-            const res = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
-            const docs = (res?.docs ?? []).map(normalizeDocumentObject);
-            if (returnFullDocument)
-                return this.helpers.returnJsonArray(docs);
-            return this.helpers.returnJsonArray(docs.map((d) => ({ _id: d._id, _rev: d._rev })));
+    const items = this.getInputData();
+    const returnData = [];
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+        const operation = this.getNodeParameter('operation', itemIndex);
+        const db = this.getNodeParameter('db', itemIndex);
+        const docId = this.getNodeParameter('docId', itemIndex, '');
+        const rawBody = this.getNodeParameter('body', itemIndex, {});
+        const bodyFields = this.getNodeParameter('bodyFields.field', itemIndex, []);
+        const rev = this.getNodeParameter('rev', itemIndex, '');
+        const rawFilter = this.getNodeParameter('filter', itemIndex, {});
+        const purgeAfterDelete = this.getNodeParameter('purgeAfterDelete', itemIndex, true);
+        const replace = this.getNodeParameter('replace', itemIndex, false);
+        const simpleFilters = this.getNodeParameter('simpleFilters.rule', itemIndex, []);
+        const pageSize = this.getNodeParameter('pageSize', itemIndex, 50);
+        const page = this.getNodeParameter('page', itemIndex, 1);
+        const includeDocs = this.getNodeParameter('includeDocs', itemIndex, true);
+        const sortField = this.getNodeParameter('sortField', itemIndex, '_id') || '_id';
+        const sortDirection = this.getNodeParameter('sortDirection', itemIndex, 'asc');
+        const extraFields = this.getNodeParameter('extraFields', itemIndex, []);
+        const wrapWithMetadata = this.getNodeParameter('wrapWithMetadata', itemIndex, true);
+        const attachments = this.getNodeParameter('attachments', itemIndex, false);
+        const attEncodingInfo = this.getNodeParameter('attEncodingInfo', itemIndex, false);
+        const attsSinceRaw = this.getNodeParameter('attsSince', itemIndex, '[]');
+        const revs = this.getNodeParameter('revs', itemIndex, false);
+        const revsInfo = this.getNodeParameter('revsInfo', itemIndex, false);
+        const getRev = this.getNodeParameter('getRev', itemIndex, '');
+        const attachmentName = this.getNodeParameter('attachmentName', itemIndex, '');
+        const attachmentData = this.getNodeParameter('attachmentData', itemIndex, '');
+        const attachmentContentType = this.getNodeParameter('attachmentContentType', itemIndex, 'application/octet-stream');
+        const returnFullDocument = this.getNodeParameter('returnFullDocument', itemIndex, true);
+        const baseBody = normalizeObject(rawBody, 'Body must be an object or valid JSON object string');
+        const body = applyBodyFields(baseBody, bodyFields);
+        const selector = mergeSelectors(normalizeSelector(rawFilter), buildSimpleSelector(simpleFilters));
+        const attsSince = normalizeArray(attsSinceRaw);
+        const hasFilter = selector && Object.keys(selector).length > 0;
+        if (operation === 'create') {
+            const created = await transport_1.couchDbRequest.call(this, 'POST', `/${db}`, body);
+            returnData.push({ json: created });
+            continue;
         }
-        if (!docId)
-            throw new Error('Document ID is required when no filter is provided');
-        const query = buildQuery({ attachments, att_encoding_info: attEncodingInfo, atts_since: attsSince, rev: getRev || undefined, revs, revs_info: revsInfo });
-        const doc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}${query}`);
-        if (returnFullDocument)
-            return [{ json: doc }];
-        return [{ json: { _id: doc?._id ?? docId, _rev: doc?._rev } }];
-    }
-    if (operation === 'find') {
-        const skip = Math.max(0, (page - 1) * pageSize);
-        if (!hasFilter) {
-            // Fallback to _all_docs when no selector/filters are provided
-            const res = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${includeDocs}&limit=${pageSize}&skip=${skip}`);
+        if (operation === 'get') {
+            if (hasFilter) {
+                const res = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
+                const docs = (res?.docs ?? []).map(normalizeDocumentObject);
+                if (returnFullDocument) {
+                    returnData.push(...this.helpers.returnJsonArray(docs));
+                }
+                else {
+                    returnData.push(...this.helpers.returnJsonArray(docs.map((d) => ({ _id: d._id, _rev: d._rev }))));
+                }
+                continue;
+            }
+            if (!docId)
+                throw new Error('Document ID is required when no filter is provided');
+            const query = buildQuery({ attachments, att_encoding_info: attEncodingInfo, atts_since: attsSince, rev: getRev || undefined, revs, revs_info: revsInfo });
+            const doc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}${query}`);
+            if (returnFullDocument) {
+                returnData.push({ json: doc });
+            }
+            else {
+                returnData.push({ json: { _id: doc?._id ?? docId, _rev: doc?._rev } });
+            }
+            continue;
+        }
+        if (operation === 'find') {
+            const skip = Math.max(0, (page - 1) * pageSize);
+            if (!hasFilter) {
+                // Fallback to _all_docs when no selector/filters are provided
+                const needDocs = includeDocs || (Array.isArray(extraFields) && extraFields.length > 0);
+                const res = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${needDocs}&limit=${pageSize}&skip=${skip}`);
+                const totalRows = res?.total_rows ?? 0;
+                if (includeDocs) {
+                    const docs = (res?.rows ?? [])
+                        .map((row) => (row.doc ? normalizeDocumentObject(row.doc) : undefined))
+                        .filter((d) => d !== undefined);
+                    if (!wrapWithMetadata)
+                        returnData.push(...this.helpers.returnJsonArray(docs));
+                    else
+                        returnData.push({ json: { docs, count: docs.length, total: totalRows } });
+                    continue;
+                }
+                const idsOnly = (res?.rows ?? []).map((row) => {
+                    const base = { id: row.id, key: row.key, value: row.value };
+                    if (needDocs && row.doc && Array.isArray(extraFields) && extraFields.length > 0) {
+                        Object.assign(base, pickFields(row.doc, extraFields));
+                    }
+                    return base;
+                });
+                if (!wrapWithMetadata)
+                    returnData.push(...this.helpers.returnJsonArray(idsOnly));
+                else
+                    returnData.push({ json: { docs: idsOnly, count: idsOnly.length, total: totalRows } });
+                continue;
+            }
+            const allowServerSort = selectorHasField(selector, sortField);
+            const sortSpec = allowServerSort ? buildSort(sortField, sortDirection) : undefined;
+            const res = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector, limit: pageSize, skip, ...(sortSpec ? { sort: sortSpec } : {}) });
+            const docs = (res?.docs ?? []).map(normalizeDocumentObject);
+            if (!allowServerSort)
+                sortInPlace(docs, sortField, sortDirection);
+            const totalDocs = res?.total_docs ?? res?.execution_stats?.total_docs_examined ?? docs.length + skip;
+            if (includeDocs) {
+                if (!wrapWithMetadata)
+                    returnData.push(...this.helpers.returnJsonArray(docs));
+                else
+                    returnData.push({ json: { docs, count: docs.length, total: totalDocs } });
+            }
+            else {
+                const metaOnly = docs.map((d) => ({
+                    _id: d._id,
+                    _rev: d._rev,
+                    ...(Array.isArray(extraFields) && extraFields.length > 0 ? pickFields(d, extraFields) : {})
+                }));
+                if (!wrapWithMetadata)
+                    returnData.push(...this.helpers.returnJsonArray(metaOnly));
+                else
+                    returnData.push({ json: { docs: metaOnly, count: metaOnly.length, total: totalDocs } });
+            }
+            continue;
+        }
+        if (operation === 'getAttachment') {
+            if (!docId)
+                throw new Error('Document ID is required for attachment operations');
+            if (!attachmentName)
+                throw new Error('Attachment name is required');
+            const credentials = await this.getCredentials('couchDbApi');
+            const { baseUrl, username, password } = credentials;
+            const response = await this.helpers.httpRequest({
+                method: 'GET',
+                url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
+                qs: getRev ? { rev: getRev } : undefined,
+                auth: { username, password },
+                encoding: 'arraybuffer',
+                json: false,
+                resolveWithFullResponse: true
+            });
+            const resObj = response;
+            const data = Buffer.from(resObj?.body ?? []).toString('base64');
+            const contentType = resObj?.headers?.['content-type'];
+            returnData.push({ json: { _id: docId, attachment: attachmentName, contentType, data } });
+            continue;
+        }
+        if (operation === 'putAttachment') {
+            if (!docId)
+                throw new Error('Document ID is required for attachment operations');
+            if (!attachmentName)
+                throw new Error('Attachment name is required');
+            if (!attachmentData)
+                throw new Error('Attachment data (base64) is required');
+            const credentials = await this.getCredentials('couchDbApi');
+            const { baseUrl, username, password } = credentials;
+            const currentRev = rev || (await fetchRevision.call(this, db, docId));
+            const buffer = Buffer.from(attachmentData, 'base64');
+            const res = await this.helpers.httpRequest({
+                method: 'PUT',
+                url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
+                qs: currentRev ? { rev: currentRev } : undefined,
+                auth: { username, password },
+                body: buffer,
+                encoding: null,
+                json: false,
+                headers: { 'Content-Type': attachmentContentType }
+            });
+            returnData.push({ json: res });
+            continue;
+        }
+        if (operation === 'deleteAttachment') {
+            if (!docId)
+                throw new Error('Document ID is required for attachment operations');
+            if (!attachmentName)
+                throw new Error('Attachment name is required');
+            const credentials = await this.getCredentials('couchDbApi');
+            const { baseUrl, username, password } = credentials;
+            const currentRev = rev || (await fetchRevision.call(this, db, docId));
+            const res = await this.helpers.httpRequest({
+                method: 'DELETE',
+                url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
+                qs: currentRev ? { rev: currentRev } : undefined,
+                auth: { username, password },
+                json: true
+            });
+            returnData.push({ json: res });
+            continue;
+        }
+        if (operation === 'update') {
+            if (hasFilter) {
+                const found = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
+                const docs = (found?.docs ?? []).map(normalizeDocumentObject).map((doc) => {
+                    if (replace)
+                        return { ...body, _id: doc._id, _rev: doc._rev };
+                    return { ...doc, ...body };
+                });
+                if (docs.length === 0)
+                    continue;
+                const bulkRes = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_bulk_docs`, { docs });
+                returnData.push(...this.helpers.returnJsonArray(bulkRes));
+                continue;
+            }
+            if (!docId)
+                throw new Error('Document ID is required when no filter is provided');
+            let current;
+            try {
+                current = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
+            }
+            catch (error) {
+                if (!isNotFound(error))
+                    throw error;
+            }
+            if (!current) {
+                const toCreate = { ...body, _id: docId };
+                returnData.push({ json: await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, toCreate) });
+                continue;
+            }
+            const currentRev = current?._rev || rev;
+            if (!currentRev)
+                throw new Error('Revision not found for update');
+            const updated = replace ? { ...body, _id: docId, _rev: currentRev } : { ...current, ...body };
+            returnData.push({ json: await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, updated) });
+            continue;
+        }
+        if (operation === 'delete') {
+            if (hasFilter) {
+                const found = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
+                const docs = (found?.docs ?? []).map(normalizeDocumentObject);
+                if (docs.length === 0)
+                    continue;
+                const purgePayload = docs.reduce((acc, doc) => {
+                    if (doc._id && doc._rev)
+                        acc[doc._id] = [doc._rev];
+                    return acc;
+                }, {});
+                const toDelete = docs.map((doc) => ({ _id: doc._id, _rev: doc._rev, _deleted: true }));
+                const bulkRes = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_bulk_docs`, { docs: toDelete });
+                if (purgeAfterDelete && Object.keys(purgePayload).length > 0) {
+                    await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_purge`, purgePayload);
+                }
+                returnData.push(...this.helpers.returnJsonArray(bulkRes));
+                continue;
+            }
+            if (!docId)
+                throw new Error('Document ID is required when no filter is provided');
+            const existing = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
+            const currentRev = existing?._rev || rev;
+            if (!currentRev)
+                throw new Error('Revision not found for delete');
+            const delRes = await transport_1.couchDbRequest.call(this, 'DELETE', `/${db}/${docId}?rev=${currentRev}`);
+            if (purgeAfterDelete) {
+                await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_purge`, { [docId]: [currentRev] });
+            }
+            returnData.push({ json: delRes });
+            continue;
+        }
+        if (operation === 'purge') {
+            returnData.push({ json: await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_purge`, { [docId]: [rev] }) });
+            continue;
+        }
+        if (operation === 'listDocs') {
+            const skip = Math.max(0, (page - 1) * pageSize);
+            const needDocs = includeDocs || (Array.isArray(extraFields) && extraFields.length > 0);
+            const res = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${needDocs}&limit=${pageSize}&skip=${skip}`);
             if (includeDocs) {
                 const docs = (res?.rows ?? [])
                     .map((row) => (row.doc ? normalizeDocumentObject(row.doc) : undefined))
                     .filter((d) => d !== undefined);
-                return this.helpers.returnJsonArray(docs);
+                sortInPlace(docs, sortField, sortDirection);
+                const totalRows = res?.total_rows ?? docs.length + skip;
+                if (!wrapWithMetadata)
+                    returnData.push(...this.helpers.returnJsonArray(docs));
+                else
+                    returnData.push({ json: { docs, count: docs.length, total: totalRows } });
+                continue;
             }
-            return this.helpers.returnJsonArray((res?.rows ?? []).map((row) => ({ id: row.id, key: row.key, value: row.value })));
-        }
-        const res = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector, limit: pageSize, skip });
-        const docs = (res?.docs ?? []).map(normalizeDocumentObject);
-        if (includeDocs)
-            return this.helpers.returnJsonArray(docs);
-        return this.helpers.returnJsonArray(docs.map((d) => ({ _id: d._id, _rev: d._rev })));
-    }
-    if (operation === 'getAttachment') {
-        if (!docId)
-            throw new Error('Document ID is required for attachment operations');
-        if (!attachmentName)
-            throw new Error('Attachment name is required');
-        const credentials = await this.getCredentials('couchDbApi');
-        const { baseUrl, username, password } = credentials;
-        const response = await this.helpers.httpRequest({
-            method: 'GET',
-            url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
-            qs: getRev ? { rev: getRev } : undefined,
-            auth: { username, password },
-            encoding: 'arraybuffer',
-            json: false,
-            resolveWithFullResponse: true
-        });
-        const resObj = response;
-        const data = Buffer.from(resObj?.body ?? []).toString('base64');
-        const contentType = resObj?.headers?.['content-type'];
-        return [{ json: { _id: docId, attachment: attachmentName, contentType, data } }];
-    }
-    if (operation === 'putAttachment') {
-        if (!docId)
-            throw new Error('Document ID is required for attachment operations');
-        if (!attachmentName)
-            throw new Error('Attachment name is required');
-        if (!attachmentData)
-            throw new Error('Attachment data (base64) is required');
-        const credentials = await this.getCredentials('couchDbApi');
-        const { baseUrl, username, password } = credentials;
-        const currentRev = rev || (await fetchRevision.call(this, db, docId));
-        const buffer = Buffer.from(attachmentData, 'base64');
-        const res = await this.helpers.httpRequest({
-            method: 'PUT',
-            url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
-            qs: currentRev ? { rev: currentRev } : undefined,
-            auth: { username, password },
-            body: buffer,
-            encoding: null,
-            json: false,
-            headers: { 'Content-Type': attachmentContentType }
-        });
-        return [{ json: res }];
-    }
-    if (operation === 'deleteAttachment') {
-        if (!docId)
-            throw new Error('Document ID is required for attachment operations');
-        if (!attachmentName)
-            throw new Error('Attachment name is required');
-        const credentials = await this.getCredentials('couchDbApi');
-        const { baseUrl, username, password } = credentials;
-        const currentRev = rev || (await fetchRevision.call(this, db, docId));
-        const res = await this.helpers.httpRequest({
-            method: 'DELETE',
-            url: `${baseUrl}/${encodeURIComponent(db)}/${encodeURIComponent(docId)}/${encodeURIComponent(attachmentName)}`,
-            qs: currentRev ? { rev: currentRev } : undefined,
-            auth: { username, password },
-            json: true
-        });
-        return [{ json: res }];
-    }
-    if (operation === 'update') {
-        if (hasFilter) {
-            const found = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
-            const docs = (found?.docs ?? []).map(normalizeDocumentObject).map((doc) => {
-                if (replace)
-                    return { ...body, _id: doc._id, _rev: doc._rev };
-                return { ...doc, ...body };
-            });
-            if (docs.length === 0)
-                return [];
-            const bulkRes = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_bulk_docs`, { docs });
-            return this.helpers.returnJsonArray(bulkRes);
-        }
-        if (!docId)
-            throw new Error('Document ID is required when no filter is provided');
-        const current = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
-        const currentRev = current?._rev || rev;
-        if (!currentRev)
-            throw new Error('Revision not found for update');
-        const updated = replace ? { ...body, _id: docId, _rev: currentRev } : { ...current, ...body };
-        return [{ json: await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, updated) }];
-    }
-    if (operation === 'delete') {
-        if (hasFilter) {
-            const found = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
-            const docs = (found?.docs ?? []).map(normalizeDocumentObject);
-            if (docs.length === 0)
-                return [];
-            const purgePayload = docs.reduce((acc, doc) => {
-                if (doc._id && doc._rev)
-                    acc[doc._id] = [doc._rev];
-                return acc;
-            }, {});
-            const toDelete = docs.map((doc) => ({ _id: doc._id, _rev: doc._rev, _deleted: true }));
-            const bulkRes = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_bulk_docs`, { docs: toDelete });
-            if (purgeAfterDelete && Object.keys(purgePayload).length > 0) {
-                await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_purge`, purgePayload);
+            const idsOnly = (res?.rows ?? []).map((row) => ({ id: row.id, key: row.key, value: row.value }));
+            const totalRows = res?.total_rows ?? idsOnly.length + skip;
+            if (needDocs && Array.isArray(extraFields) && extraFields.length > 0) {
+                for (let i = 0; i < idsOnly.length; i++) {
+                    const row = res?.rows?.[i];
+                    if (row?.doc)
+                        Object.assign(idsOnly[i], pickFields(row.doc, extraFields));
+                }
             }
-            return this.helpers.returnJsonArray(bulkRes);
+            sortInPlace(idsOnly, sortField, sortDirection);
+            if (!wrapWithMetadata)
+                returnData.push(...this.helpers.returnJsonArray(idsOnly));
+            else
+                returnData.push({ json: { docs: idsOnly, count: idsOnly.length, total: totalRows } });
+            continue;
         }
-        if (!docId)
-            throw new Error('Document ID is required when no filter is provided');
-        const existing = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
-        const currentRev = existing?._rev || rev;
-        if (!currentRev)
-            throw new Error('Revision not found for delete');
-        const delRes = await transport_1.couchDbRequest.call(this, 'DELETE', `/${db}/${docId}?rev=${currentRev}`);
-        if (purgeAfterDelete) {
-            await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_purge`, { [docId]: [currentRev] });
-        }
-        return [{ json: delRes }];
+        throw new Error('Unsupported document operation');
     }
-    if (operation === 'purge') {
-        return [{ json: await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_purge`, { [docId]: [rev] }) }];
-    }
-    if (operation === 'listDocs') {
-        const skip = Math.max(0, (page - 1) * pageSize);
-        const res = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/_all_docs?include_docs=${includeDocs}&limit=${pageSize}&skip=${skip}`);
-        if (includeDocs) {
-            const docs = (res?.rows ?? [])
-                .map((row) => (row.doc ? normalizeDocumentObject(row.doc) : undefined))
-                .filter((d) => d !== undefined);
-            return this.helpers.returnJsonArray(docs);
-        }
-        return this.helpers.returnJsonArray((res?.rows ?? []).map((row) => ({ id: row.id, key: row.key, value: row.value })));
-    }
-    throw new Error('Unsupported document operation');
+    return returnData;
 }
 function normalizeSelector(value) {
     if (value === undefined || value === null || value === '')
@@ -333,4 +433,116 @@ function buildQuery(query) {
 async function fetchRevision(db, docId) {
     const doc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
     return doc?._rev || '';
+}
+function buildSort(field, direction) {
+    const trimmed = (field || '').trim();
+    if (!trimmed)
+        return undefined;
+    return [{ [trimmed]: direction }];
+}
+function selectorHasField(selector, field) {
+    const key = (field || '').trim();
+    if (!key)
+        return false;
+    if (!selector || typeof selector !== 'object')
+        return false;
+    // Shallow check: presence of the sort field at top-level or inside $and/$or clauses.
+    if (key in selector)
+        return true;
+    const clauses = selector.$and || selector.$or;
+    if (Array.isArray(clauses)) {
+        return clauses.some((c) => c && typeof c === 'object' && key in c);
+    }
+    return false;
+}
+function getValueByPath(obj, path) {
+    if (!obj || typeof obj !== 'object' || !path)
+        return undefined;
+    const parts = path.split('.').filter(Boolean);
+    let current = obj;
+    for (const part of parts) {
+        if (current && typeof current === 'object' && part in current) {
+            current = current[part];
+        }
+        else {
+            return undefined;
+        }
+    }
+    return current;
+}
+function sortInPlace(items, field, direction) {
+    const path = (field || '').trim() || '_id';
+    const dir = direction === 'desc' ? -1 : 1;
+    items.sort((a, b) => {
+        const va = getValueByPath(a, path);
+        const vb = getValueByPath(b, path);
+        if (va === vb)
+            return 0;
+        if (va === undefined || va === null)
+            return 1;
+        if (vb === undefined || vb === null)
+            return -1;
+        if (va > vb)
+            return dir;
+        if (va < vb)
+            return -dir;
+        return 0;
+    });
+}
+function pickFields(source, fields) {
+    const out = {};
+    if (!source || typeof source !== 'object' || !Array.isArray(fields))
+        return out;
+    for (const path of fields) {
+        if (!path)
+            continue;
+        const parts = `${path}`.split('.').filter(Boolean);
+        let current = source;
+        for (const part of parts) {
+            if (current && typeof current === 'object' && part in current) {
+                current = current[part];
+            }
+            else {
+                current = undefined;
+                break;
+            }
+        }
+        if (current !== undefined)
+            out[path] = current;
+    }
+    return out;
+}
+function isNotFound(error) {
+    const status = error?.statusCode || error?.status || error?.response?.statusCode;
+    return status === 404;
+}
+function applyBodyFields(base, fields) {
+    const out = { ...(base || {}) };
+    if (!Array.isArray(fields))
+        return out;
+    for (const entry of fields) {
+        const path = (entry?.path || '').trim();
+        if (!path)
+            continue;
+        const val = parseSimpleValue(entry?.value);
+        setValueByPath(out, path, val);
+    }
+    return out;
+}
+function setValueByPath(target, path, value) {
+    const parts = path.split('.').filter(Boolean);
+    if (parts.length === 0)
+        return;
+    let current = target;
+    for (let i = 0; i < parts.length; i++) {
+        const key = parts[i];
+        if (i === parts.length - 1) {
+            current[key] = value;
+            return;
+        }
+        if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
+            current[key] = {};
+        }
+        current = current[key];
+    }
 }

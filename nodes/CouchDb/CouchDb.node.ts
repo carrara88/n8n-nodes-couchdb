@@ -120,7 +120,7 @@ export class CouchDb implements INodeType {
         description: 'Required only for purge; update/delete fetch revision automatically'
       },
       {
-        displayName: 'Revision (for Get)',
+        displayName: 'Revision',
         name: 'getRev',
         type: 'string',
         default: '',
@@ -233,8 +233,44 @@ export class CouchDb implements INodeType {
         displayName: 'Include Docs',
         name: 'includeDocs',
         type: 'boolean',
-        default: true,
+        default: false,
         description: 'Include full documents when listing (otherwise only ids)',
+        displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'] } }
+      },
+      {
+        displayName: 'Sort Field',
+        name: 'sortField',
+        type: 'string',
+        default: '_id',
+        description: 'Field to sort by (dot notation). Defaults to document id',
+        displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'] } }
+      },
+      {
+        displayName: 'Sort Direction',
+        name: 'sortDirection',
+        type: 'options',
+        options: [
+          { name: 'Ascending', value: 'asc' },
+          { name: 'Descending', value: 'desc' }
+        ],
+        default: 'asc',
+        displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'] } }
+      },
+      {
+        displayName: 'Extra Fields (dot notation)',
+        name: 'extraFields',
+        type: 'string',
+        typeOptions: { multipleValues: true },
+        default: [],
+        description: 'Fields to include when not returning full documents',
+        displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'], includeDocs: [false] } }
+      },
+      {
+        displayName: 'Wrap Response With Metadata',
+        name: 'wrapWithMetadata',
+        type: 'boolean',
+        default: true,
+        description: 'When true, return { docs, count, total }; when false, return only the docs array',
         displayOptions: { show: { resource: ['document'], operation: ['listDocs', 'find'] } }
       },
       {
@@ -242,6 +278,26 @@ export class CouchDb implements INodeType {
         name: 'body',
         type: 'json',
         default: '{}',
+        displayOptions: { show: { resource: ['document'], operation: ['create', 'update'] } }
+      },
+      {
+        displayName: 'Body Fields',
+        name: 'bodyFields',
+        type: 'fixedCollection',
+        typeOptions: { multipleValues: true },
+        default: {},
+        placeholder: 'Add field',
+        description: 'Set individual fields using dot notation; merged into Body',
+        options: [
+          {
+            name: 'field',
+            displayName: 'Field',
+            values: [
+              { displayName: 'Path (dot notation)', name: 'path', type: 'string', default: '' },
+              { displayName: 'Value', name: 'value', type: 'string', default: '' }
+            ]
+          }
+        ],
         displayOptions: { show: { resource: ['document'], operation: ['create', 'update'] } }
       }
     ]
