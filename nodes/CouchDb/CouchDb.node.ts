@@ -50,6 +50,7 @@ export class CouchDb implements INodeType {
           { name: 'Get Attachment', value: 'getAttachment' },
           { name: 'Put Attachment', value: 'putAttachment' },
           { name: 'Delete Attachment', value: 'deleteAttachment' },
+          { name: 'Exists', value: 'exists' },
           { name: 'Update', value: 'update' },
           { name: 'Delete', value: 'delete' },
           { name: 'Purge', value: 'purge' }
@@ -68,7 +69,7 @@ export class CouchDb implements INodeType {
         displayOptions: {
           show: {
             resource: ['document', 'database'],
-            operation: ['create', 'delete', 'get', 'update', 'purge', 'find', 'listDocs', 'getAttachment', 'putAttachment', 'deleteAttachment']
+            operation: ['create', 'delete', 'get', 'exists', 'update', 'purge', 'find', 'listDocs', 'getAttachment', 'putAttachment', 'deleteAttachment']
           }
         }
       },
@@ -77,7 +78,7 @@ export class CouchDb implements INodeType {
         name: 'docId',
         type: 'string',
         default: '',
-        displayOptions: { show: { resource: ['document'], operation: ['get', 'update', 'delete', 'purge', 'getAttachment', 'putAttachment', 'deleteAttachment'] } }
+        displayOptions: { show: { resource: ['document'], operation: ['get', 'exists', 'update', 'delete', 'purge', 'getAttachment', 'putAttachment', 'deleteAttachment'] } }
       },
       {
         displayName: 'Attachment Name',
@@ -112,6 +113,14 @@ export class CouchDb implements INodeType {
         displayOptions: { show: { resource: ['document'], operation: ['get'] } }
       },
       {
+        displayName: 'Return Updated Document',
+        name: 'returnUpdatedDocument',
+        type: 'boolean',
+        default: false,
+        description: 'If true, fetch and return the full document after create or update instead of the CouchDB write response',
+        displayOptions: { show: { resource: ['document'], operation: ['create', 'update'] } }
+      },
+      {
         displayName: 'Revision',
         name: 'rev',
         type: 'string',
@@ -139,7 +148,7 @@ export class CouchDb implements INodeType {
         displayName: 'Simple Filters',
         name: 'simpleFilters',
         type: 'fixedCollection',
-        typeOptions: { multipleValues: true },
+        typeOptions: { multipleValues: true, sortable: true },
         default: {},
         placeholder: 'Add filter',
         description: 'Quick equals filters (dot notation) merged into the selector',
@@ -170,6 +179,14 @@ export class CouchDb implements INodeType {
         default: false,
         description: 'Include compressed size/codec info for attachments',
         displayOptions: { show: { resource: ['document'], operation: ['get'] } }
+      },
+      {
+        displayName: 'Return Attachment as Base64',
+        name: 'returnAttachmentAsBase64',
+        type: 'boolean',
+        default: false,
+        description: 'If true, return getAttachment data as base64 inside the JSON; otherwise emit an n8n binary property',
+        displayOptions: { show: { resource: ['document'], operation: ['getAttachment'] } }
       },
       {
         displayName: 'Attachments Since (revs array)',
@@ -284,7 +301,7 @@ export class CouchDb implements INodeType {
         displayName: 'Body Fields',
         name: 'bodyFields',
         type: 'fixedCollection',
-        typeOptions: { multipleValues: true },
+        typeOptions: { multipleValues: true, sortable: true },
         default: {},
         placeholder: 'Add field',
         description: 'Set individual fields using dot notation; merged into Body',

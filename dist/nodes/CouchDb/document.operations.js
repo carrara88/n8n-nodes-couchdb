@@ -33,14 +33,29 @@ async function documentOperations() {
         const attachmentData = this.getNodeParameter('attachmentData', itemIndex, '');
         const attachmentContentType = this.getNodeParameter('attachmentContentType', itemIndex, 'application/octet-stream');
         const returnFullDocument = this.getNodeParameter('returnFullDocument', itemIndex, true);
+        const returnUpdatedDocument = this.getNodeParameter('returnUpdatedDocument', itemIndex, false);
+        const returnAttachmentAsBase64 = this.getNodeParameter('returnAttachmentAsBase64', itemIndex, false);
         const baseBody = normalizeObject(rawBody, 'Body must be an object or valid JSON object string');
-        const body = applyBodyFields(baseBody, bodyFields);
+        // Only use bodyFields for create/replace payloads; for patching we re-apply bodyFields on top of the fetched document to avoid collapsing the document to the minimal dot-path structure.
+        const bodyWithFields = applyBodyFields(baseBody, bodyFields);
         const selector = mergeSelectors(normalizeSelector(rawFilter), buildSimpleSelector(simpleFilters));
         const attsSince = normalizeArray(attsSinceRaw);
         const hasFilter = selector && Object.keys(selector).length > 0;
         if (operation === 'create') {
-            const created = await transport_1.couchDbRequest.call(this, 'POST', `/${db}`, body);
-            returnData.push({ json: created });
+            const created = await transport_1.couchDbRequest.call(this, 'POST', `/${db}`, bodyWithFields);
+            if (returnUpdatedDocument) {
+                const createdId = created?.id || docId;
+                if (createdId) {
+                    const fullDoc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${createdId}`);
+                    returnData.push({ json: normalizeDocumentObject(fullDoc) });
+                }
+                else {
+                    returnData.push({ json: created });
+                }
+            }
+            else {
+                returnData.push({ json: created });
+            }
             continue;
         }
         if (operation === 'get') {
@@ -64,6 +79,22 @@ async function documentOperations() {
             }
             else {
                 returnData.push({ json: { _id: doc?._id ?? docId, _rev: doc?._rev } });
+            }
+            continue;
+        }
+        if (operation === 'exists') {
+            if (!docId)
+                throw new Error('Document ID is required');
+            try {
+                const doc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
+                returnData.push({ json: { exists: true, _id: doc?._id ?? docId, _rev: doc?._rev } });
+            }
+            catch (error) {
+                if (isNotFound(error)) {
+                    returnData.push({ json: { exists: false, _id: docId } });
+                    continue;
+                }
+                throw error;
             }
             continue;
         }
@@ -137,12 +168,25 @@ async function documentOperations() {
                 auth: { username, password },
                 encoding: 'arraybuffer',
                 json: false,
-                resolveWithFullResponse: true
+                returnFullResponse: true
             });
             const resObj = response;
-            const data = Buffer.from(resObj?.body ?? []).toString('base64');
-            const contentType = resObj?.headers?.['content-type'];
-            returnData.push({ json: { _id: docId, attachment: attachmentName, contentType, data } });
+            const rawBody = resObj?.data !== undefined ? resObj.data : resObj?.body ?? resObj?.rawBody ?? resObj;
+            const buffer = toBuffer(rawBody);
+            const data = ensurePaddedBase64(buffer.toString('base64'));
+            const contentType = resObj?.headers?.['content-type'] ?? resObj?.headers?.get?.('content-type');
+            if (returnAttachmentAsBase64) {
+                const dataUrl = buildDataUrl(data, contentType);
+                returnData.push({ json: { _id: docId, attachment: attachmentName, contentType, data, dataUrl } });
+            }
+            else {
+                const item = {
+                    json: { _id: docId, attachment: attachmentName, contentType }
+                };
+                item.binary = item.binary || {};
+                item.binary.data = await this.helpers.prepareBinaryData(buffer, attachmentName, contentType);
+                returnData.push(item);
+            }
             continue;
         }
         if (operation === 'putAttachment') {
@@ -188,17 +232,33 @@ async function documentOperations() {
             continue;
         }
         if (operation === 'update') {
+            // Consider "replace" only when a full base body is provided and no bodyFields are used.
+            const shouldReplace = replace && Object.keys(baseBody || {}).length > 0 && (!Array.isArray(bodyFields) || bodyFields.length === 0);
             if (hasFilter) {
                 const found = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_find`, { selector });
                 const docs = (found?.docs ?? []).map(normalizeDocumentObject).map((doc) => {
-                    if (replace)
-                        return { ...body, _id: doc._id, _rev: doc._rev };
-                    return { ...doc, ...body };
+                    if (shouldReplace)
+                        return { ...bodyWithFields, _id: doc._id, _rev: doc._rev };
+                    const merged = applyPatchToDocument(doc, baseBody, bodyFields);
+                    return { ...merged, _id: doc._id, _rev: doc._rev };
                 });
                 if (docs.length === 0)
                     continue;
                 const bulkRes = await transport_1.couchDbRequest.call(this, 'POST', `/${db}/_bulk_docs`, { docs });
-                returnData.push(...this.helpers.returnJsonArray(bulkRes));
+                if (returnUpdatedDocument) {
+                    for (const res of bulkRes) {
+                        if (res?.ok && res.id) {
+                            const fullDoc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${res.id}`);
+                            returnData.push({ json: normalizeDocumentObject(fullDoc) });
+                        }
+                        else {
+                            returnData.push({ json: res });
+                        }
+                    }
+                }
+                else {
+                    returnData.push(...this.helpers.returnJsonArray(bulkRes));
+                }
                 continue;
             }
             if (!docId)
@@ -212,15 +272,31 @@ async function documentOperations() {
                     throw error;
             }
             if (!current) {
-                const toCreate = { ...body, _id: docId };
-                returnData.push({ json: await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, toCreate) });
+                const toCreate = { ...bodyWithFields, _id: docId };
+                const created = await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, toCreate);
+                if (returnUpdatedDocument) {
+                    const fullDoc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
+                    returnData.push({ json: normalizeDocumentObject(fullDoc) });
+                }
+                else {
+                    returnData.push({ json: created });
+                }
                 continue;
             }
             const currentRev = current?._rev || rev;
             if (!currentRev)
                 throw new Error('Revision not found for update');
-            const updated = replace ? { ...body, _id: docId, _rev: currentRev } : { ...current, ...body };
-            returnData.push({ json: await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, updated) });
+            const updated = shouldReplace
+                ? { ...bodyWithFields, _id: docId, _rev: currentRev }
+                : { ...applyPatchToDocument(current, baseBody, bodyFields), _id: docId, _rev: currentRev };
+            const writeRes = await transport_1.couchDbRequest.call(this, 'PUT', `/${db}/${docId}`, updated);
+            if (returnUpdatedDocument) {
+                const fullDoc = await transport_1.couchDbRequest.call(this, 'GET', `/${db}/${docId}`);
+                returnData.push({ json: normalizeDocumentObject(fullDoc) });
+            }
+            else {
+                returnData.push({ json: writeRes });
+            }
             continue;
         }
         if (operation === 'delete') {
@@ -458,11 +534,22 @@ function selectorHasField(selector, field) {
 function getValueByPath(obj, path) {
     if (!obj || typeof obj !== 'object' || !path)
         return undefined;
-    const parts = path.split('.').filter(Boolean);
+    const segments = parsePath(path);
+    if (segments.length === 0)
+        return undefined;
     let current = obj;
-    for (const part of parts) {
-        if (current && typeof current === 'object' && part in current) {
-            current = current[part];
+    for (const segment of segments) {
+        if (segment.type === 'prop') {
+            if (current && typeof current === 'object' && segment.key in current) {
+                current = current[segment.key];
+            }
+            else {
+                return undefined;
+            }
+            continue;
+        }
+        if (Array.isArray(current)) {
+            current = current[segment.index];
         }
         else {
             return undefined;
@@ -496,19 +583,9 @@ function pickFields(source, fields) {
     for (const path of fields) {
         if (!path)
             continue;
-        const parts = `${path}`.split('.').filter(Boolean);
-        let current = source;
-        for (const part of parts) {
-            if (current && typeof current === 'object' && part in current) {
-                current = current[part];
-            }
-            else {
-                current = undefined;
-                break;
-            }
-        }
-        if (current !== undefined)
-            out[path] = current;
+        const val = getValueByPath(source, path);
+        if (val !== undefined)
+            out[path] = val;
     }
     return out;
 }
@@ -530,19 +607,168 @@ function applyBodyFields(base, fields) {
     return out;
 }
 function setValueByPath(target, path, value) {
-    const parts = path.split('.').filter(Boolean);
-    if (parts.length === 0)
+    const segments = parsePath(path);
+    if (segments.length === 0)
         return;
     let current = target;
-    for (let i = 0; i < parts.length; i++) {
-        const key = parts[i];
-        if (i === parts.length - 1) {
-            current[key] = value;
+    let parent = null;
+    let parentKey = null;
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        const isLast = i === segments.length - 1;
+        if (segment.type === 'prop') {
+            if (isLast) {
+                const existing = current[segment.key];
+                current[segment.key] = shouldMerge(existing, value) ? { ...existing, ...value } : value;
+                return;
+            }
+            if (!(segment.key in current) || current[segment.key] === null || typeof current[segment.key] !== 'object') {
+                current[segment.key] = segments[i + 1]?.type === 'index' ? [] : {};
+            }
+            parent = current;
+            parentKey = segment.key;
+            current = current[segment.key];
+            continue;
+        }
+        if (!Array.isArray(current)) {
+            const newArr = [];
+            if (parent !== null && parentKey !== null)
+                parent[parentKey] = newArr;
+            current = newArr;
+        }
+        if (isLast) {
+            const existing = current[segment.index];
+            current[segment.index] = shouldMerge(existing, value) ? { ...existing, ...value } : value;
             return;
         }
-        if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
-            current[key] = {};
+        if (current[segment.index] === undefined || current[segment.index] === null || typeof current[segment.index] !== 'object') {
+            current[segment.index] = segments[i + 1]?.type === 'index' ? [] : {};
         }
-        current = current[key];
+        parent = current;
+        parentKey = segment.index;
+        current = current[segment.index];
+    }
+}
+function shouldMerge(existing, incoming) {
+    return isPlainObject(existing) && isPlainObject(incoming);
+}
+function isPlainObject(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+function parsePath(path) {
+    // Fail fast on empty/undefined paths so we do not partially patch a document
+    const input = (path || '').trim();
+    if (!input)
+        return [];
+    const segments = [];
+    let i = 0;
+    while (i < input.length) {
+        // Skip dot separators
+        if (input[i] === '.') {
+            i++;
+            continue;
+        }
+        // Array index in brackets, allow surrounding whitespace
+        if (input[i] === '[') {
+            const end = input.indexOf(']', i);
+            if (end === -1)
+                return [];
+            const content = input.slice(i + 1, end).trim();
+            if (!/^\d+$/.test(content))
+                return [];
+            segments.push({ type: 'index', index: Number(content) });
+            i = end + 1;
+            continue;
+        }
+        // Property segment until next '.' or '['
+        const start = i;
+        while (i < input.length && input[i] !== '.' && input[i] !== '[' && input[i] !== ']')
+            i++;
+        if (start === i)
+            return [];
+        segments.push({ type: 'prop', key: input.slice(start, i) });
+    }
+    return segments;
+}
+function deepMerge(target, source) {
+    if (isPlainObject(target) && isPlainObject(source)) {
+        const out = { ...target };
+        for (const [key, val] of Object.entries(source)) {
+            out[key] = key in target ? deepMerge(target[key], val) : val;
+        }
+        return out;
+    }
+    if (Array.isArray(target) && Array.isArray(source)) {
+        const out = target.slice();
+        for (let i = 0; i < source.length; i++) {
+            const val = source[i];
+            if (val === undefined)
+                continue;
+            out[i] = i in target ? deepMerge(target[i], val) : val;
+        }
+        return out;
+    }
+    return source;
+}
+function toBuffer(raw) {
+    if (Buffer.isBuffer(raw))
+        return raw;
+    if (raw instanceof ArrayBuffer)
+        return Buffer.from(raw);
+    if (ArrayBuffer.isView(raw))
+        return Buffer.from(raw.buffer);
+    if (Array.isArray(raw))
+        return Buffer.from(raw);
+    if (typeof raw === 'string') {
+        if (isProbablyBase64(raw)) {
+            try {
+                return Buffer.from(ensurePaddedBase64(raw), 'base64');
+            }
+            catch {
+                /* fallthrough */
+            }
+        }
+        return Buffer.from(raw, 'binary');
+    }
+    return Buffer.from([]);
+}
+function isProbablyBase64(value) {
+    const trimmed = (value || '').trim();
+    if (!trimmed)
+        return false;
+    if (trimmed.length % 4 !== 0)
+        return false;
+    return /^[A-Za-z0-9+/=\r\n]+$/.test(trimmed);
+}
+function ensurePaddedBase64(value) {
+    const clean = (value || '').replace(/\s+/g, '');
+    const pad = clean.length % 4;
+    if (pad === 0)
+        return clean;
+    return clean + '='.repeat(4 - pad);
+}
+function buildDataUrl(base64, contentType) {
+    const mime = contentType || 'application/octet-stream';
+    return `data:${mime};base64,${base64}`;
+}
+function applyPatchToDocument(current, body, bodyFields) {
+    const base = cloneJson(current || {});
+    const merged = deepMerge(base, body);
+    if (!Array.isArray(bodyFields))
+        return merged;
+    for (const entry of bodyFields) {
+        const path = (entry?.path || '').trim();
+        if (!path)
+            continue;
+        setValueByPath(merged, path, parseSimpleValue(entry?.value));
+    }
+    return merged;
+}
+function cloneJson(value) {
+    try {
+        return JSON.parse(JSON.stringify(value));
+    }
+    catch {
+        return value;
     }
 }
