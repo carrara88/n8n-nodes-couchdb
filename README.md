@@ -1,8 +1,10 @@
 # n8n CouchDB Community Node (`n8n-nodes-couchdb`)
 
 [![npm](https://img.shields.io/npm/v/%40carrara88%2Fn8n-nodes-couchdb?logo=npm&logoColor=white)](https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb)
-[![GitHub repo](https://img.shields.io/badge/GitHub-carrara88%2Fn8n--nodes--couchdb-181717?logo=github&logoColor=white)](https://github.com/carrara88/n8n-nodes-couchdb)
-[![CouchDB](https://img.shields.io/badge/Apache%20CouchDB-0B5FFF?logo=apache&logoColor=white)](https://github.com/apache/couchdb)
+[![GitHub repo](https://img.shields.io/badge/GitHub-carrara88%2Fn8n--nodes--couchdb-35b335?logo=github&logoColor=white)](https://github.com/carrara88/n8n-nodes-couchdb)
+[![CouchDB](https://img.shields.io/badge/Apache-CouchDB-ff3535?logo=apache&logoColor=white)](https://github.com/apache/couchdb)
+
+![Test workflow](./docs/n8n-nodes-couchdb-test-workflow.png)
 
 Custom n8n nodes for Apache CouchDB with:
 
@@ -14,24 +16,6 @@ Custom n8n nodes for Apache CouchDB with:
 - Purge
 - Replace/merge update modes
 
-
-## Links
-
-- GitHub: https://github.com/carrara88/n8n-nodes-couchdb
-- npm: https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb
-
-
-
-## What’s included
-- Database: list (`{ name }`), create, delete.
-- Document operations: create, get, find (Mango), list (_all_docs with paging), update, delete, purge.
-- Attachments: get, put (base64), delete with automatic revision handling.
-- Filters: Mango selector plus Simple Filters (field = value, dot notation) merged automatically; when no selector is provided, Document ID is required for get/update/delete.
-- Pagination & sorting: page/pageSize, includeDocs toggle, optional metadata wrapper `{ docs, count, total }`, sort field/direction (server-side when selector allows, in-memory otherwise), extraFields when not returning full docs.
-- Safety & normalization: empty selectors ignored; bodies must be valid JSON objects; returned docs are normalized to avoid character-spread errors; invalid docs raise clear errors.
-- Update modes: merge by default; “Replace Document (override)” fully overwrites doc keeping `_id`/`_rev`.
-- Delete modes: `_bulk_docs` delete with optional `_purge` of the same revisions (`Purge After Delete` on by default); standalone `purge` operation available.
-- Get options: return only `_id`/`_rev` if desired; fetch specific revisions; include attachments, encoding info, `atts_since`, `_revisions`, `_revs_info`.
 
 ## Installation (n8n)
 
@@ -48,6 +32,22 @@ When prompted for the package name, install:
 - `npm i @carrara88/n8n-nodes-couchdb`
 
 Then restart n8n so it loads the newly installed node.
+
+## What’s included
+- Database: list (`{ name }`), create, delete.
+- Document operations: create, get, find (Mango), list (_all_docs with paging), update, delete, purge.
+- Attachments: get, put (base64), delete with automatic revision handling.
+- Filters: Mango selector plus Simple Filters (field = value, dot notation) merged automatically; when no selector is provided, Document ID is required for get/update/delete.
+- Pagination & sorting: page/pageSize, includeDocs toggle, optional metadata wrapper `{ docs, count, total }`, sort field/direction (server-side when selector allows, in-memory otherwise), extraFields when not returning full docs.
+- Safety & normalization: empty selectors ignored; bodies must be valid JSON objects; returned docs are normalized to avoid character-spread errors; invalid docs raise clear errors.
+- Update modes: merge by default; “Replace Document (override)” fully overwrites doc keeping `_id`/`_rev`.
+- Delete modes: `_bulk_docs` delete with optional `_purge` of the same revisions (`Purge After Delete` on by default); standalone `purge` operation available.
+- Get options: return only `_id`/`_rev` if desired; fetch specific revisions; include attachments, encoding info, `atts_since`, `_revisions`, `_revs_info`.
+
+| | | |
+|---|---|---|
+|List Document|  |![List Document](./docs/n8n-nodes-couchdb-list.png)|
+|Put Attachment|  |![Put Attachment](./docs/n8n-nodes-couchdb-attach.png)|
 
 
 ## Usage notes
