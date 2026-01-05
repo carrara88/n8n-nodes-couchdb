@@ -1,6 +1,6 @@
 {
   "name": "@carrara88/n8n-nodes-couchdb",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "n8n community node for Apache CouchDB",
   "keywords": [
     "n8n-community-node-package",

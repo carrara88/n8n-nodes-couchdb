@@ -1,7 +1,6 @@
 # n8n CouchDB Community Node (`n8n-nodes-couchdb`)
 
 [![npm](https://img.shields.io/npm/v/%40carrara88%2Fn8n-nodes-couchdb?logo=npm&logoColor=white)](https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb)
-[![npm downloads](https://img.shields.io/npm/dm/%40carrara88%2Fn8n-nodes-couchdb?logo=npm&logoColor=white)](https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb)
 [![GitHub repo](https://img.shields.io/badge/GitHub-carrara88%2Fn8n--nodes--couchdb-181717?logo=github&logoColor=white)](https://github.com/carrara88/n8n-nodes-couchdb)
 [![CouchDB](https://img.shields.io/badge/Apache%20CouchDB-0B5FFF?logo=apache&logoColor=white)](https://github.com/apache/couchdb)
 
