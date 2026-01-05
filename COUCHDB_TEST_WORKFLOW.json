@@ -1,0 +1,623 @@
+{
+  "name": "COUCHDB_TEST_WORKFLOW",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -832
+      ],
+      "id": "76a6c3c1-b44f-4c72-8409-1fd1c3c7c85d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {},
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -832
+      ],
+      "id": "adcfe39d-d487-4f02-a729-cecf48bbdd09",
+      "name": "List database",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "db": "=test_n8n"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -816
+      ],
+      "id": "67403f34-d6ff-4ec0-ac15-5484290ae027",
+      "name": "Create database",
+      "executeOnce": true,
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "create",
+        "db": "=test_n8n",
+        "returnUpdatedDocument": true,
+        "body": "{\n\"_id\":\"c555c3ea8fd54a8d80fac3e969000a4e\"\n}"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -832
+      ],
+      "id": "71497eed-1753-460f-ace7-011300dbe7d4",
+      "name": "Create document",
+      "executeOnce": true,
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "db": "=test_n8n",
+        "docId": "c555c3ea8fd54a8d80fac3e969000a4e"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -496
+      ],
+      "id": "263ced32-8dfc-4a5b-b25e-950ce1594859",
+      "name": "Get document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "putAttachment",
+        "db": "=test_n8n",
+        "docId": "c555c3ea8fd54a8d80fac3e969000a4e",
+        "attachmentName": "text.txt",
+        "attachmentData": "testb64"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -864
+      ],
+      "id": "b7fcb37c-8f4a-4bef-9122-93d9d99ddbc6",
+      "name": "PutAttachment document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "listDocs",
+        "db": "=test_n8n"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -848
+      ],
+      "id": "eb8167ac-d79b-496c-8164-8a50c0e5c25a",
+      "name": "ListDocs document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "exists",
+        "db": "=test_n8n",
+        "docId": "c555c3ea8fd54a8d80fac3e969000a4e"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -848
+      ],
+      "id": "c9daad5a-6dc1-4891-8e0d-4ec98782cb0b",
+      "name": "Exists document",
+      "executeOnce": true,
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "find",
+        "db": "=test_n8n",
+        "simpleFilters": {
+          "rule": [
+            {
+              "field": "_id",
+              "value": "c555c3ea8fd54a8d80fac3e969000a4e"
+            }
+          ]
+        }
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -672
+      ],
+      "id": "3b42e91f-871f-47dc-81a5-51c47de12401",
+      "name": "Find document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "deleteAttachment",
+        "db": "=test_n8n",
+        "docId": "c555c3ea8fd54a8d80fac3e969000a4e",
+        "attachmentName": "text.txt"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        -864
+      ],
+      "id": "1eeac27d-a7f9-4764-ab4e-70bba86d63e6",
+      "name": "DeleteAttachment document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "getAttachment",
+        "db": "=test_n8n",
+        "docId": "c555c3ea8fd54a8d80fac3e969000a4e",
+        "attachmentName": "text.txt"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        -864
+      ],
+      "id": "156622af-0ca7-4cee-84cb-511df181ca0c",
+      "name": "GetAttachment document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9e5dd858-961f-4144-ab6a-f808447744a4",
+              "leftValue": "={{ $input.all().map(item => item.json.name) }}",
+              "rightValue": "test_n8n",
+              "operator": {
+                "type": "array",
+                "operation": "contains",
+                "rightType": "any"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        -832
+      ],
+      "id": "45969a0e-2f40-45d9-80bc-3ce1921857a4",
+      "name": "If",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9e5dd858-961f-4144-ab6a-f808447744a4",
+              "leftValue": "={{ $json.exists===true }}",
+              "rightValue": "test_n8n",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        -848
+      ],
+      "id": "43592549-230c-4bee-b01c-aa19243e61c3",
+      "name": "If1",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "db": "=test_n8n"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        2736,
+        -720
+      ],
+      "id": "3e331b6b-c7a0-479c-8274-1da5d119448a",
+      "name": "Delete database1",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "delete",
+        "db": "=test_n8n",
+        "docId": "c555c3ea8fd54a8d80fac3e969000a4e"
+      },
+      "type": "CUSTOM.couchDb",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        -720
+      ],
+      "id": "43c83c54-196f-4213-8198-3a872b5baabb",
+      "name": "Delete document",
+      "credentials": {
+        "couchDbApi": {
+          "id": "EuUhcjjBnbdPZDzU",
+          "name": "CouchDB account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        -720
+      ],
+      "id": "b403101b-1ba1-46c8-8e69-296ca5f925f5",
+      "name": "No Operation, do nothing",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2144,
+        -736
+      ],
+      "id": "86a8335f-e9ac-4752-a28f-84d1b0ca8d1c",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        -864
+      ],
+      "id": "fb0448b5-72af-4a6a-ac39-2ba27e21d22e",
+      "name": "No Operation, do nothing1",
+      "executeOnce": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "List database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create database": {
+      "main": [
+        [
+          {
+            "node": "ListDocs document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List database": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create document": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get document": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "PutAttachment document": {
+      "main": [
+        [
+          {
+            "node": "GetAttachment document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ListDocs document": {
+      "main": [
+        [
+          {
+            "node": "Exists document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exists document": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeleteAttachment document": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "ListDocs document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete database1": {
+      "main": [
+        []
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete document": {
+      "main": [
+        [
+          {
+            "node": "Delete database1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetAttachment document": {
+      "main": [
+        [
+          {
+            "node": "DeleteAttachment document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find document": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Delete document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing1": {
+      "main": [
+        [
+          {
+            "node": "Find document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PutAttachment document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "e38ff7cf-c47d-4d4c-b4b1-917800193111",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bbec4c0672ed6a04d1cbda727208614fc9230302f418cfc95a4eadae6fefe435"
+  },
+  "id": "SNewkQHmpnrD0x1zFSEhI",
+  "tags": []
+}

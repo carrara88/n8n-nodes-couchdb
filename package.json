@@ -8,14 +8,14 @@
     "n8n"
   ],
   "license": "MIT",
-  "author": "CouchDB n8n Custom Node",
+  "author": "https://github.com/carrara88",
   "repository": {
     "type": "git",
-    "url": "https://example.com/your-repo.git"
+    "url": "https://github.com/carrara88/n8n-nodes-couchdb.git"
   },
-  "homepage": "https://example.com/your-repo",
+  "homepage": "https://github.com/carrara88/n8n-nodes-couchdb",
   "bugs": {
-    "url": "https://example.com/your-repo/issues"
+    "url": "https://github.com/carrara88/n8n-nodes-couchdb/issues"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

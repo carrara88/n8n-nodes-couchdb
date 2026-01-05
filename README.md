@@ -2,6 +2,19 @@
 
 Custom n8n nodes for Apache CouchDB with Mango selectors, paging, attachments, bulk updates/deletes, optional purge, and replace/merge update modes.
 
+## CouchDB notes (attachments, delete vs purge)
+
+### Attachments
+
+- CouchDB attachments are stored under the document `_attachments` object.
+- Downloading an attachment typically uses `GET /{db}/{docId}/{attachmentName}`.
+
+### Delete vs purge (safety)
+
+- `_bulk_docs` delete marks documents as deleted (tombstones) and keeps history.
+- `_purge` is **irreversible** and bypasses normal revisioning/replication semantics.
+- In this custom node, **"Purge After Delete" defaults to true** for the Document → Delete operation. If you want safer behavior, disable it and reserve purge for explicit maintenance tasks.
+
 ## What’s included
 - Database: list (`{ name }`), create, delete.
 - Document operations: create, get, find (Mango), list (_all_docs with paging), update, delete, purge.
