@@ -1,8 +1,9 @@
 # n8n CouchDB Community Node (`n8n-nodes-couchdb`)
 
-![https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb](https://img.shields.io/badge/repo-NPM-%23CB3837?logo=npm&logoColor=white)
-![https://github.com/carrara88/n8n-nodes-couchdb](https://img.shields.io/badge/repo-github-blue?logo=github)
-![https://github.com/apache/couchdb](https://img.shields.io/badge/repo-CouchDB-%23CB3837?logo=apache)
+[![npm](https://img.shields.io/npm/v/%40carrara88%2Fn8n-nodes-couchdb?logo=npm&logoColor=white)](https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb)
+[![npm downloads](https://img.shields.io/npm/dm/%40carrara88%2Fn8n-nodes-couchdb?logo=npm&logoColor=white)](https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb)
+[![GitHub repo](https://img.shields.io/badge/GitHub-carrara88%2Fn8n--nodes--couchdb-181717?logo=github&logoColor=white)](https://github.com/carrara88/n8n-nodes-couchdb)
+[![CouchDB](https://img.shields.io/badge/Apache%20CouchDB-0B5FFF?logo=apache&logoColor=white)](https://github.com/apache/couchdb)
 
 Custom n8n nodes for Apache CouchDB with:
 
@@ -17,7 +18,7 @@ Custom n8n nodes for Apache CouchDB with:
 
 ## Links
 
-- GitHub: 
+- GitHub: https://github.com/carrara88/n8n-nodes-couchdb
 - npm: https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb
 
 
