@@ -1,7 +1,7 @@
 {
-  "name": "n8n-nodes-couchdb",
+  "name": "n8n-community-node-couchdb",
   "version": "1.0.0",
-  "description": "Custom n8n nodes for Apache CouchDB",
+  "description": "n8n community node for Apache CouchDB",
   "keywords": [
     "n8n-community-node-package",
     "couchdb",
@@ -19,19 +19,30 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "nodes": [
+      "dist/nodes/CouchDb/CouchDb.node.js"
+    ],
+    "credentials": [
+      "dist/credentials/CouchDbApi.credentials.js"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
-    "dist"
+    "dist/**",
+    "README.md"
   ],
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc && npm run copy-assets",
     "copy-assets": "node scripts/copy-assets.js",
-    "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
     "pack": "npm run build && npm pack",
     "lint": "echo \"add eslint and run lint\"",
     "test": "npm run build"
-  },
-  "dependencies": {
-    "n8n-workflow": "^1.0.0"
   },
   "peerDependencies": {
     "n8n-workflow": ">=1.0.0",

@@ -26,6 +26,22 @@ Custom n8n nodes for Apache CouchDB with Mango selectors, paging, attachments, b
 - Delete modes: `_bulk_docs` delete with optional `_purge` of the same revisions (`Purge After Delete` on by default); standalone `purge` operation available.
 - Get options: return only `_id`/`_rev` if desired; fetch specific revisions; include attachments, encoding info, `atts_since`, `_revisions`, `_revs_info`.
 
+## Installation (n8n)
+
+### Install a community node via the n8n GUI (recommended)
+
+Follow the official guide:
+https://docs.n8n.io/integrations/community-nodes/installation/gui-install/#install-a-community-node
+
+When prompted for the package name, install:
+- `n8n-community-node-couchdb`
+
+### Install via npm
+
+- `npm i n8n-community-node-couchdb`
+
+Then restart n8n so it loads the newly installed node.
+
 ## Quickstart
 1) Install deps: `npm install`
 2) Build: `npm run build` (copies logo.svg into dist)
@@ -33,8 +49,8 @@ Custom n8n nodes for Apache CouchDB with Mango selectors, paging, attachments, b
 4) Restart n8n/worker and find the node under Custom.
 
 ### Install via npm (when published)
-- `npm install n8n-nodes-couchdb`
-- Ensure `N8N_CUSTOM_EXTENSIONS` points to the installed path or mount the package into `/home/node/.n8n/custom` in Docker.
+- `npm i n8n-community-node-couchdb`
+- If you run n8n in Docker and install the package on the host, ensure n8n can access it (e.g., install inside the container image, or mount `node_modules` appropriately).
 
 ## Operations & key parameters (Document)
 - Operation: create | get | find | list documents | update | delete | purge | get attachment | put attachment | delete attachment.
