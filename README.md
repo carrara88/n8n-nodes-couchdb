@@ -1,19 +1,26 @@
-# n8n CouchDB Nodes
+# n8n CouchDB Community Node (`n8n-nodes-couchdb`)
 
-Custom n8n nodes for Apache CouchDB with Mango selectors, paging, attachments, bulk updates/deletes, optional purge, and replace/merge update modes.
+![https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb](https://img.shields.io/badge/repo-NPM-%23CB3837?logo=npm&logoColor=white)
+![https://github.com/carrara88/n8n-nodes-couchdb](https://img.shields.io/badge/repo-github-blue?logo=github)
+![https://github.com/apache/couchdb](https://img.shields.io/badge/repo-CouchDB-%23CB3837?logo=apache)
 
-## CouchDB notes (attachments, delete vs purge)
+Custom n8n nodes for Apache CouchDB with:
 
-### Attachments
+- DB and document full CRUD
+- Mango query selectors
+- Paging
+- **Attachments** management (base64 I/O)
+- Bulk updates/deletes
+- Purge
+- Replace/merge update modes
 
-- CouchDB attachments are stored under the document `_attachments` object.
-- Downloading an attachment typically uses `GET /{db}/{docId}/{attachmentName}`.
 
-### Delete vs purge (safety)
+## Links
 
-- `_bulk_docs` delete marks documents as deleted (tombstones) and keeps history.
-- `_purge` is **irreversible** and bypasses normal revisioning/replication semantics.
-- In this custom node, **"Purge After Delete" defaults to true** for the Document → Delete operation. If you want safer behavior, disable it and reserve purge for explicit maintenance tasks.
+- GitHub: 
+- npm: https://www.npmjs.com/package/@carrara88/n8n-nodes-couchdb
+
+
 
 ## What’s included
 - Database: list (`{ name }`), create, delete.
@@ -34,23 +41,21 @@ Follow the official guide:
 https://docs.n8n.io/integrations/community-nodes/installation/gui-install/#install-a-community-node
 
 When prompted for the package name, install:
-- `n8n-community-node-couchdb`
+- `@carrara88/n8n-nodes-couchdb`
 
 ### Install via npm
 
-- `npm i n8n-community-node-couchdb`
+- `npm i @carrara88/n8n-nodes-couchdb`
 
 Then restart n8n so it loads the newly installed node.
 
-## Quickstart
-1) Install deps: `npm install`
-2) Build: `npm run build` (copies logo.svg into dist)
-3) Mount in n8n (`N8N_CUSTOM_EXTENSIONS` + volume to `/home/node/.n8n/custom`)
-4) Restart n8n/worker and find the node under Custom.
 
-### Install via npm (when published)
-- `npm i n8n-community-node-couchdb`
-- If you run n8n in Docker and install the package on the host, ensure n8n can access it (e.g., install inside the container image, or mount `node_modules` appropriately).
+## Usage notes
+- Leave Filter empty/`{}` to rely on Document ID; use Simple Filters for quick equals, or a full Mango selector for complex queries.
+- Bulk update uses `_find` + `_bulk_docs`; replace mode overwrites everything except `_id`/`_rev`.
+- Bulk delete uses `_find` + `_bulk_docs` and, if enabled, `_purge` with the same revision map.
+- Purge expects `{ docId: [rev] }`; the delete flow builds this automatically when purge is enabled.
+- If CouchDB returns non-object documents, the node raises a clear error instead of emitting character-keyed objects.
 
 ## Operations & key parameters (Document)
 - Operation: create | get | find | list documents | update | delete | purge | get attachment | put attachment | delete attachment.
@@ -66,6 +71,18 @@ Then restart n8n so it loads the newly installed node.
 - Purge (standalone): expects docId + rev.
 - Attachments: get/put/delete with automatic revision fetch when not provided; put requires base64 data and content type.
 
+
+### Attachments
+
+- CouchDB attachments are stored under the document `_attachments` object.
+- Downloading an attachment typically uses `GET /{db}/{docId}/{attachmentName}`.
+
+### Delete vs purge (safety)
+
+- `_bulk_docs` delete marks documents as deleted (tombstones) and keeps history.
+- `_purge` is **irreversible** and bypasses normal revisioning/replication semantics.
+- In this custom node, **"Purge After Delete" defaults to true** for the Document → Delete operation. If you want safer behavior, disable it and reserve purge for explicit maintenance tasks.
+
 ## Examples
 - Simple Filters (equals, dot notation): Field `metadata.category`, Value `news`; empty Mango selector ⇒ `{ "metadata.category": { "$eq": "news" } }`.
 - Mango selector: Filter `{ "type": "workflow", "active": true }`.
@@ -73,6 +90,21 @@ Then restart n8n so it loads the newly installed node.
 - Replace update: Operation `Update`, Replace Document `true`, Body `{ "name": "New Name" }` ⇒ keeps only `_id`, `_rev`, `name`.
 - Delete with purge: Operation `Delete`, Purge After Delete `true`, Filter `{ "type": "old" }` ⇒ bulk delete + purge matching docs.
 - Attachment upload: Operation `Put Attachment`, set Document ID, Attachment Name, base64 data, content type; revision auto-fetched if not provided.
+
+## Development Quickstart
+This section is for local development/contributing.
+
+1) Install deps: `npm install`
+2) Build: `npm run build` (copies logo.svg into dist)
+3) Make n8n load the node (for self-hosted n8n):
+  - Option A (recommended): install the package in n8n as a Community Node (GUI)
+  - Option B (advanced): use `N8N_CUSTOM_EXTENSIONS` and mount/copy this package into `/home/node/.n8n/custom`
+4) Restart n8n/worker and find the node under Custom.
+
+### Install via npm (when published)
+- `npm i @carrara88/n8n-nodes-couchdb`
+- If you run n8n in Docker and install the package on the host, ensure n8n can access it (e.g., install inside the container image, or mount `node_modules` appropriately).
+
 
 ### Workflow snippet (list paginated)
 ```json
@@ -88,7 +120,7 @@ Then restart n8n so it loads the newly installed node.
         "includeDocs": true
       },
       "name": "CouchDB List",
-      "type": "n8n-nodes-couchdb.couchDb",
+      "type": "@carrara88/n8n-nodes-couchdb.couchDb",
       "typeVersion": 1,
       "credentials": {
         "couchDbApi": {
@@ -103,10 +135,3 @@ Then restart n8n so it loads the newly installed node.
 ## Credentials
 - Type: `couchDbApi`
 - Fields: Base URL (default `http://localhost:5984`), Username, Password
-
-## Usage notes
-- Leave Filter empty/`{}` to rely on Document ID; use Simple Filters for quick equals, or a full Mango selector for complex queries.
-- Bulk update uses `_find` + `_bulk_docs`; replace mode overwrites everything except `_id`/`_rev`.
-- Bulk delete uses `_find` + `_bulk_docs` and, if enabled, `_purge` with the same revision map.
-- Purge expects `{ docId: [rev] }`; the delete flow builds this automatically when purge is enabled.
-- If CouchDB returns non-object documents, the node raises a clear error instead of emitting character-keyed objects.
